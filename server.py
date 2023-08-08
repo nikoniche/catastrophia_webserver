@@ -1,6 +1,5 @@
 from flask import Flask, request
 from notifications import notify
-from threading import Thread
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -75,7 +74,3 @@ def run():
     print("Booting up server.")
     app.run(host='0.0.0.0', port=8095)
     print("Server booted up.")
-
-# def start_server():
-#     server_thread = Thread(target=run)
-#     server_thread.start()
