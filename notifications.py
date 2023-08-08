@@ -1,8 +1,9 @@
 from notify_run import Notify
 from secrets import secret
 
-ENDPOINT = secret("NOTIFY_ENDPOINT")
-channel = Notify(endpoint=ENDPOINT)
+NOTIFY_ENDPOINT = secret("NOTIFY_ENDPOINT")
+
+channel = Notify(endpoint=NOTIFY_ENDPOINT)
 
 
 def notify(message):

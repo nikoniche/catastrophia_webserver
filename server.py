@@ -1,4 +1,4 @@
-from flask import Flask, request, send_from_directory
+from flask import Flask, request, send_from_directory, render_template
 from notifications import notify
 from flask_sqlalchemy import SQLAlchemy
 import os
@@ -17,18 +17,20 @@ class Player(db.Model):
 
 @app.route("/")
 def home_page():
-    return "Catastrophia's Official Webserver"
+    return render_template("index.html")
+
 
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
-                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+                               'static/favicon.ico', mimetype='image/vnd.microsoft.icon')
+
 
 @app.route('/request', methods=['POST', 'GET'])
 def request_playtime():
     if request.method == 'POST':
         name = request.args.get("name").lower()
-        playtime = request.args.get("playertime")
+        playtime = request.args.get("playtime")
 
         try:
             playtime = int(playtime)
@@ -44,10 +46,11 @@ def request_playtime():
             db.session.add(player)
         else:
             if player.playtime <= playtime:
+
                 player.playtime = playtime
         db.session.commit()
 
-        return f"Updated data of player {name} with playertime {playtime}"
+        return 200
     else:
         name = request.args.get("name").lower()
         player = Player.query.filter_by(username=name).first()
