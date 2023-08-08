@@ -1,6 +1,7 @@
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 from notifications import notify
 from flask_sqlalchemy import SQLAlchemy
+import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///data.db"
@@ -18,6 +19,10 @@ class Player(db.Model):
 def home_page():
     return "Catastrophia's Official Webserver"
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 @app.route('/request', methods=['POST', 'GET'])
 def request_playtime():
