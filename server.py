@@ -15,6 +15,11 @@ class Player(db.Model):
     playtime = db.Column(db.Integer, unique=False, nullable=False)
 
 
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+
+
 @app.route("/")
 def home_page():
     return render_template("index.html")
@@ -50,7 +55,7 @@ def request_playtime():
                 player.playtime = playtime
         db.session.commit()
 
-        return 200
+        return "Added the player to the database."
     else:
         name = request.args.get("name").lower()
         player = Player.query.filter_by(username=name).first()
@@ -76,9 +81,3 @@ def top_ten_player():
     for player in top_players:
         message += f"{player.username}*{player.playtime};"
     return message
-
-
-def run():
-    print("Booting up server.")
-    app.run(host='0.0.0.0', port=8095)
-    print("Server booted up.")
