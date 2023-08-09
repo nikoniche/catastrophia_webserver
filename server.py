@@ -1,4 +1,4 @@
-from flask import Flask, request, send_from_directory, render_template
+from flask import Flask, request, send_from_directory, render_template, jsonify
 from notifications import notify
 from flask_sqlalchemy import SQLAlchemy
 import os
@@ -33,36 +33,57 @@ def favicon():
 
 @app.route('/request', methods=['POST', 'GET'])
 def request_playtime():
+    # fetching the username parameter
+    username = request.args.get("username")
+    if username is not None:
+        # ignoring differences between upper-case and lower-case letters in names
+        username = username.lower()
+    else:
+        return jsonify(messsage="Missing the username argument."), 400
+
+    # fetching the player's data from the database
+    player = Player.query.filter_by(username=username).first()
+
     if request.method == 'POST':
-        name = request.args.get("name").lower()
+        # fetching the playtime parameter
         playtime = request.args.get("playtime")
 
+        if playtime is None:
+            return jsonify(messsage="Missing the playtime argument."), 400
+
+        # checking the correct format of playtime, so it is not a string for example
         try:
             playtime = int(playtime)
         except ValueError:
-            return "Mission failed"
+            return jsonify(message="Incorrect playtime format."), 400
 
-        player = Player.query.filter_by(username=name).first()
+        # fetching the requested player's data
+
         if player is None:
+            # the player has not yet been added to the database -> adding a new row to the table
             player = Player(
-                username=name,
+                username=username,
                 playtime=playtime
             )
+
             db.session.add(player)
         else:
-            if player.playtime <= playtime:
-
+            # player is already in the database
+            # checking if the sent-in playtime is actually more than the recorded
+            force_change = request.args.get("force_change")
+            print(force_change)
+            if player.playtime <= playtime or force_change:
                 player.playtime = playtime
+
         db.session.commit()
 
-        return "Added the player to the database."
+        return jsonify(message="Successfully updated the player's data."), 200
     else:
-        name = request.args.get("name").lower()
-        player = Player.query.filter_by(username=name).first()
-        if player is None:
-            return "unknown"
-        else:
-            return str(player.playtime)
+        # fetching the player's data
+        playtime = player.playtime if player is not None else 0
+
+        # returning a response containing the player's playtime
+        return jsonify(playtime), 200
 
 
 @app.route('/notify', methods=['POST'])
@@ -71,13 +92,30 @@ def notify_me():
         message = request.args.get("message")
         notify(message)
         print(f"Sent message: {message}")
-        return "Notified successfully."
+        return jsonify(message="Message sent."), 200
 
 
-@app.route("/topten")
-def top_ten_player():
-    top_players = Player.query.order_by(Player.playtime.desc()).limit(50).all()
-    message = ""
-    for player in top_players:
-        message += f"{player.username}*{player.playtime};"
-    return message
+@app.route("/top_times", methods=["GET"])
+def top_times():
+    if request.method == "GET":
+        # getting the desired amount of top players
+        amount = request.args.get("amount")
+
+        # checking the correct format, if it isn't a string for example
+        try:
+            amount = int(amount)
+        except ValueError:
+            return jsonify(message="Incorrect amount format."), 400
+
+        # preventing accessing unnecessary large quantities of data
+        if amount > 100:
+            return jsonify(message="Amount was too high."), 400
+
+        # formatting the data of the top players into a dict
+        top_players = Player.query.order_by(Player.playtime.desc()).limit(amount).all()
+        top_times_dict = {
+            player.username: player.playtime for player in top_players
+        }
+
+        # returning a response containing the data
+        return jsonify(top_times_dict), 200
