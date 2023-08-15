@@ -119,3 +119,42 @@ def top_times():
 
         # returning a response containing the data
         return jsonify(top_times_dict), 200
+
+
+linking_requests = {}
+
+
+@app.route("/link", methods=["GET", "POST"])
+def link():
+    # fetching the username parameter
+    username = request.args.get("username")
+    if username is None:
+        return jsonify(messsage="Missing the username argument."), 400
+
+    if request.method == "POST":
+        confirmation_status = request.args.get("confirmed")
+        if confirmation_status is None:
+            return jsonify(message="Missing the confirmed argument."), 400
+        else:
+            confirmation_status = int(confirmation_status)
+
+        if confirmation_status == 2:
+            # removing old requests
+            del linking_requests[username]
+            return jsonify(message="Removed the linking request."), 200
+        else:
+            linking_requests[username] = confirmation_status
+            return jsonify(message=f"Request successful."), 200
+
+    elif request.method == "GET":
+        if username not in linking_requests:
+            return jsonify(message="This username has not initiated a linking request."), 400
+        else:
+            return jsonify((username, linking_requests[username])), 200
+
+
+@app.route("/all_linking_requests", methods=["GET"])
+def all_link_requests():
+    if request.method == "GET":
+        return jsonify(linking_requests), 200
+
