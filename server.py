@@ -1,12 +1,29 @@
 from flask import Flask, request, send_from_directory, render_template, jsonify
 from notifications import notify
 from flask_sqlalchemy import SQLAlchemy
+from secrets import secret
 import os
+
+
+API_KEY = secret("API_KEY")
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///data.db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+# temporary dict for checking linking requests
+linking_requests = {}
+
+
+def is_authorized(headers: dict) -> bool:
+    """Checks if the received headers contain a valid API KEY."""
+
+    received_api_key = headers.get("api-key")
+    if received_api_key != API_KEY:
+        return False
+    else:
+        return True
 
 
 class Player(db.Model):
@@ -33,6 +50,9 @@ def favicon():
 
 @app.route('/request', methods=['POST', 'GET'])
 def request_playtime():
+    if not is_authorized(request.headers):
+        return jsonify(message="Invalid API-KEY"), 403
+
     # fetching the username parameter
     username = request.args.get("username")
     if username is not None:
@@ -71,7 +91,6 @@ def request_playtime():
             # player is already in the database
             # checking if the sent-in playtime is actually more than the recorded
             force_change = request.args.get("force_change")
-            print(force_change)
             if player.playtime <= playtime or force_change:
                 player.playtime = playtime
 
@@ -88,6 +107,9 @@ def request_playtime():
 
 @app.route('/notify', methods=['POST'])
 def notify_me():
+    if not is_authorized(request.headers):
+        return jsonify(message="Invalid API-KEY"), 403
+
     if request.method == "POST":
         message = request.args.get("message")
         notify(message)
@@ -97,6 +119,9 @@ def notify_me():
 
 @app.route("/top_times", methods=["GET"])
 def top_times():
+    if not is_authorized(request.headers):
+        return jsonify(message="Invalid API-KEY"), 403
+
     if request.method == "GET":
         # getting the desired amount of top players
         amount = request.args.get("amount")
@@ -121,11 +146,11 @@ def top_times():
         return jsonify(top_times_dict), 200
 
 
-linking_requests = {}
-
-
 @app.route("/link", methods=["GET", "POST"])
 def link():
+    if not is_authorized(request.headers):
+        return jsonify(message="Invalid API-KEY"), 403
+
     # fetching the username parameter
     username = request.args.get("username")
     if username is None:
@@ -155,6 +180,9 @@ def link():
 
 @app.route("/all_linking_requests", methods=["GET"])
 def all_link_requests():
+    if not is_authorized(request.headers):
+        return jsonify(message="Invalid API-KEY"), 403
+
     if request.method == "GET":
         return jsonify(linking_requests), 200
 
