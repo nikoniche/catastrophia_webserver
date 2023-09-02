@@ -3,6 +3,7 @@ from notifications import notify
 from flask_sqlalchemy import SQLAlchemy
 from secrets import secret
 import os
+import urllib.parse
 
 API_KEY = secret("API_KEY")
 
@@ -90,6 +91,10 @@ def request_playtime():
             force_change = request.args.get("force_change")
             if player.playtime <= playtime or force_change:
                 player.playtime = playtime
+            else:
+                print(
+                    f"Playtime set for {username} was {playtime} which is lower than saved {player.playtime}."
+                )
 
         db.session.commit()
 
@@ -109,6 +114,7 @@ def notify_me():
 
     if request.method == "POST":
         message = request.args.get("message")
+        message = urllib.parse.unquote(message)
         notify(message)
         print(f"Sent message: {message}")
         return jsonify(message="Message sent."), 200
@@ -167,27 +173,37 @@ def link():
                 del linking_requests[roblox_username]
                 return jsonify(message="Removed the linking request."), 200
             else:
-                return jsonify(message="This username has no longer an active request."), 400
+                return jsonify(
+                    message="This username has no longer an active request."
+                ), 400
         elif status == 0:
             discord_name = request.args.get("discord_name")
             if discord_name is None:
-                return jsonify(message="Missing the discord_name argument."), 400
+                return jsonify(
+                    message="Missing the discord_name argument."), 400
 
             linking_requests[roblox_username] = {
                 "discord_name": discord_name,
                 "status": status
             }
-            return jsonify(message="Successfully created a new linking request."), 200
+            return jsonify(
+                message="Successfully created a new linking request."), 200
         else:
-            linking_requests[roblox_username]["status"] = status
-            return jsonify(message="Successfully updated the status."), 200
+            if roblox_username in linking_requests:
+                linking_requests[roblox_username]["status"] = status
+                return jsonify(message="Successfully updated the status."), 200
+            else:
+                return jsonify(
+                    message="This username has no active request."), 400
 
     elif request.method == "GET":
         if roblox_username not in linking_requests:
             return jsonify(
-                message="This username has not initiated a linking request."), 400
+                message="This username has not initiated a linking request."
+            ), 400
         else:
-            return jsonify((roblox_username, linking_requests[roblox_username])), 200
+            return jsonify(
+                (roblox_username, linking_requests[roblox_username])), 200
 
 
 @app.route("/all_linking_requests", methods=["GET"])
@@ -196,5 +212,4 @@ def all_link_requests():
         return jsonify(message="Invalid API-KEY"), 403
 
     if request.method == "GET":
-        print(linking_requests)
         return jsonify(linking_requests), 200
